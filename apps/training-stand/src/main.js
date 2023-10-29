@@ -54,18 +54,17 @@ class HTTPTransport {
 const http = new HTTPTransport();
 
 function fetchWithRetry(url, options) {
-  return (async () => {
-    const retries = options.retries ?? 1;
-    let lastTry = null;
-    for (let tries = 0; tries < retries; tries++) {
-      try {
-        return await http.request(url, options);
-      } catch (e) {
-        lastTry = e;
+  let tryCount = options.retries ?? 1;
+  const retryer = () =>
+    http.request(url, options).catch((e) => {
+      tryCount--;
+      if (tryCount > 0) {
+        return retryer();
+      } else {
+        return e;
       }
-    }
-    throw lastTry;
-  })();
+    });
+  return retryer();
 }
 
 (async () => {
